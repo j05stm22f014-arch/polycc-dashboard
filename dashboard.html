@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PolyCC Interactive Dashboard</title>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    margin: 0;
+    background-color: #f4f6fa;
+    color: #333;
+  }
+
+  header {
+    background-color: #00539C;
+    color: white;
+    text-align: center;
+    padding: 20px;
+    font-size: 22px;
+    font-weight: bold;
+  }
+
+  nav {
+    display: flex;
+    justify-content: center;
+    background-color: #e5e5e5;
+  }
+
+  nav button {
+    background: none;
+    border: none;
+    padding: 15px 25px;
+    cursor: pointer;
+    font-size: 16px;
+    color: #333;
+    font-weight: 600;
+  }
+
+  nav button.active {
+    background-color: #00539C;
+    color: white;
+    border-radius: 5px 5px 0 0;
+  }
+
+  .container {
+    margin: 20px auto;
+    max-width: 1100px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    padding: 20px;
+  }
+
+  #chart1, #chart2, #chart3 {
+    width: 100%;
+    height: 600px;
+    display: none;
+  }
+
+  #chart1.active, #chart2.active, #chart3.active {
+    display: block;
+  }
+
+  footer {
+    text-align: center;
+    padding: 15px;
+    color: #777;
+    font-size: 13px;
+  }
+
+  .stats-box {
+    margin-top: 15px;
+    background: #f9fafc;
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 8px;
+    line-height: 1.7;
+  }
+
+  .highlight {
+    font-weight: bold;
+    color: #00539C;
+  }
+</style>
+</head>
+<body>
+
+<header>PolyCC Dashboard – Enrollment & Employability (2020–2024)</header>
+
+<nav>
+  <button class="active" onclick="showChart(1)">📊 Bubble Chart</button>
+  <button onclick="showChart(2)">📉 Best & Worst Courses</button>
+  <button onclick="showChart(3)">📈 Yearly Trends</button>
+</nav>
+
+<div class="container">
+  <div id="chart1" class="active"></div>
+  <div id="chart2"></div>
+  <div id="chart3"></div>
+
+  <div class="stats-box" id="stats"></div>
+</div>
+
+<footer>Created by Iskandar R. | Powered by Plotly.js</footer>
+
+<script>
+function showChart(num) {
+  document.querySelectorAll('nav button').forEach((b, i) => {
+    b.classList.toggle('active', i === num - 1);
+  });
+  document.querySelectorAll('.container > div').forEach((div, i) => {
+    div.classList.toggle('active', i === num - 1);
+  });
+}
+
+// Load CSV data
+Plotly.d3.csv("merged_data.csv", function(data) {
+  if (!data.length) {
+    document.getElementById("stats").innerHTML = "⚠️ No data found in merged_data.csv";
+    return;
+  }
+
+  // Convert numeric fields
+  data.forEach(d => {
+    d["Enrollment (%)"] = parseFloat(d["Enrollment (%)"]);
+    d["GE (%)"] = parseFloat(d["GE (%)"]);
+    d["Year"] = d["Year"].toString();
+  });
+
+  // ---- 1️⃣ Bubble Chart ----
+  const years = [...new Set(data.map(d => d.Year))];
+  const traces1 = years.map(year => {
+    const subset = data.filter(d => d.Year === year);
+    return {
+      x: subset.map(d => d["Enrollment (%)"]),
+      y: subset.map(d => d["GE (%)"]),
+      text: subset.map(d => 
+        `Program: ${d["PROGRAM"]}<br>Dept: ${d["JABATAN"]}<br>Enroll: ${d["Enrollment (%)"]}%<br>Employability: ${d["GE (%)"]}%`
+      ),
+      mode: "markers",
+      type: "scatter",
+      name: year,
+      marker: {
+        size: 12,
+        opacity: 0.75,
+        line: { width: 1, color: "#333" }
+      },
+      hovertemplate: "<b>%{text}</b><extra></extra>"
+    };
+  });
+
+  Plotly.newPlot("chart1", traces1, {
+    title: "Enrollment Rate vs Graduate Employability",
+    xaxis: { title: "Enrollment (%)" },
+    yaxis: { title: "Employability (%)" },
+    legend: { title: { text: "Year" } },
+    plot_bgcolor: "#fff",
+    paper_bgcolor: "#fff"
+  });
+
+  // ---- 2️⃣ Best & Worst Courses ----
+  const minEnroll = data.reduce((a, b) => (a["Enrollment (%)"] < b["Enrollment (%)"] ? a : b));
+  const maxEnroll = data.reduce((a, b) => (a["Enrollment (%)"] > b["Enrollment (%)"] ? a : b));
+  const minEmploy = data.reduce((a, b) => (a["GE (%)"] < b["GE (%)"] ? a : b));
+  const maxEmploy = data.reduce((a, b) => (a["GE (%)"] > b["GE (%)"] ? a : b));
+
+  const trace2 = {
+    x: [
+      minEnroll["PROGRAM"],
+      maxEnroll["PROGRAM"],
+      minEmploy["PROGRAM"],
+      maxEmploy["PROGRAM"]
+    ],
+    y: [
+      minEnroll["Enrollment (%)"],
+      maxEnroll["Enrollment (%)"],
+      minEmploy["GE (%)"],
+      maxEmploy["GE (%)"]
+    ],
+    text: [
+      `Lowest Enrollment (${minEnroll["JABATAN"]})`,
+      `Highest Enrollment (${maxEnroll["JABATAN"]})`,
+      `Lowest Employability (${minEmploy["JABATAN"]})`,
+      `Highest Employability (${maxEmploy["JABATAN"]})`
+    ],
+    type: "bar",
+    marker: { color: ["#1f77b4", "#2ca02c", "#d62728", "#ff7f0e"] },
+    hovertemplate: "<b>%{x}</b><br>%{text}<br>Value: %{y}%<extra></extra>"
+  };
+
+  Plotly.newPlot("chart2", [trace2], {
+    title: "Best & Worst Courses (Enrollment & Employability)",
+    yaxis: { title: "Percentage (%)" },
+    xaxis: { title: "Program" },
+    plot_bgcolor: "#fff",
+    paper_bgcolor: "#fff"
+  });
+
+  document.getElementById("stats").innerHTML = `
+    <span class="highlight">📘 Lowest Enrollment:</span> ${minEnroll["PROGRAM"]} (${minEnroll["Enrollment (%)"]}%) - ${minEnroll["JABATAN"]}<br>
+    <span class="highlight">📗 Highest Enrollment:</span> ${maxEnroll["PROGRAM"]} (${maxEnroll["Enrollment (%)"]}%) - ${maxEnroll["JABATAN"]}<br>
+    <span class="highlight">📕 Lowest Employability:</span> ${minEmploy["PROGRAM"]} (${minEmploy["GE (%)"]}%) - ${minEmploy["JABATAN"]}<br>
+    <span class="highlight">📙 Highest Employability:</span> ${maxEmploy["PROGRAM"]} (${maxEmploy["GE (%)"]}%) - ${maxEmploy["JABATAN"]}
+  `;
+
+  // ---- 3️⃣ Trend Chart ----
+  const departments = [...new Set(data.map(d => d.JABATAN))];
+  const traces3 = departments.map(dep => {
+    const subset = data.filter(d => d.JABATAN === dep);
+    const avgByYear = {};
+    years.forEach(y => {
+      const group = subset.filter(d => d.Year === y);
+      const avgGE = group.reduce((sum, g) => sum + g["GE (%)"], 0) / (group.length || 1);
+      avgByYear[y] = avgGE;
+    });
+    return {
+      x: years,
+      y: years.map(y => avgByYear[y]),
+      mode: "lines+markers",
+      name: dep,
+      hovertemplate: `Dept: ${dep}<br>Year: %{x}<br>Avg GE: %{y}%<extra></extra>`
+    };
+  });
+
+  Plotly.newPlot("chart3", traces3, {
+    title: "Average Employability Rate per Department (Trend)",
+    xaxis: { title: "Year" },
+    yaxis: { title: "Employability (%)" },
+    plot_bgcolor: "#fff",
+    paper_bgcolor: "#fff"
+  });
+});
+</script>
+
+</body>
+</html>
