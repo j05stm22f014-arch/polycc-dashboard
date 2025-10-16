@@ -92,7 +92,7 @@
 <nav>
   <button class="active" onclick="showChart(1)">📊 Bubble Chart</button>
   <button onclick="showChart(2)">📉 Best & Worst Courses</button>
-  <button onclick="showChart(3)">📈 Yearly Trends</button>
+  <button onclick="showChart(3)">📈 Overview Summary</button>
 </nav>
 
 <div class="container">
@@ -124,47 +124,42 @@ Plotly.d3.csv("merged_data.csv", function(data) {
 
   // Convert numeric fields
   data.forEach(d => {
-    d["Enrollment (%)"] = parseFloat(d["Enrollment (%)"]);
-    d["GE (%)"] = parseFloat(d["GE (%)"]);
-    d["Year"] = d["Year"].toString();
+    d["Average Enrollment"] = parseFloat(d["Average Enrollment"]);
+    d["Average Employability"] = parseFloat(d["Average Employability"]);
   });
 
   // ---- 1️⃣ Bubble Chart ----
-  const years = [...new Set(data.map(d => d.Year))];
-  const traces1 = years.map(year => {
-    const subset = data.filter(d => d.Year === year);
-    return {
-      x: subset.map(d => d["Enrollment (%)"]),
-      y: subset.map(d => d["GE (%)"]),
-      text: subset.map(d => 
-        `Program: ${d["PROGRAM"]}<br>Dept: ${d["JABATAN"]}<br>Enroll: ${d["Enrollment (%)"]}%<br>Employability: ${d["GE (%)"]}%`
-      ),
-      mode: "markers",
-      type: "scatter",
-      name: year,
-      marker: {
-        size: 12,
-        opacity: 0.75,
-        line: { width: 1, color: "#333" }
-      },
-      hovertemplate: "<b>%{text}</b><extra></extra>"
-    };
-  });
+  const trace1 = {
+    x: data.map(d => d["Average Enrollment"]),
+    y: data.map(d => d["Average Employability"]),
+    text: data.map(d => 
+      `Program: ${d["PROGRAM"]}<br>Enrollment: ${d["Average Enrollment"]}%<br>Employability: ${d["Average Employability"]}%`
+    ),
+    mode: "markers",
+    type: "scatter",
+    name: "Programs",
+    marker: {
+      size: 14,
+      opacity: 0.75,
+      color: "#1f77b4",
+      line: { width: 1, color: "#333" }
+    },
+    hovertemplate: "<b>%{text}</b><extra></extra>"
+  };
 
-  Plotly.newPlot("chart1", traces1, {
-    title: "Enrollment Rate vs Graduate Employability",
-    xaxis: { title: "Enrollment (%)" },
-    yaxis: { title: "Employability (%)" },
-    legend: { title: { text: "Year" } },
+  Plotly.newPlot("chart1", [trace1], {
+    title: "Enrollment vs Graduate Employability (Average 2020–2024)",
+    xaxis: { title: "Average Enrollment (%)" },
+    yaxis: { title: "Average Employability (%)" },
     plot_bgcolor: "#fff",
     paper_bgcolor: "#fff"
   });
 
   // ---- 2️⃣ Best & Worst Courses ----
-  const minEnroll = data.reduce((a, b) => (a["Enrollment (%)"] < b["Enrollment (%)"] ? a : b));
-  const maxEnroll = data.reduce((a, b) => (a["Enrollment (%)"] > b["Enrollment (%)"] ? a : b));
-  const minEmploy = data.reduce((a, b) => (a["GE (%)"] < b["GE (%)"] ? a : b));
-  const maxEmploy = data.reduce((a, b) => (a["GE (%)"] > b["GE (%)"] ? a : b));
+  const minEnroll = data.reduce((a, b) => (a["Average Enrollment"] < b["Average Enrollment"] ? a : b));
+  const maxEnroll = data.reduce((a, b) => (a["Average Enrollment"] > b["Average Enrollment"] ? a : b));
+  const minEmploy = data.reduce((a, b) => (a["Average Employability"] < b["Average Employability"] ? a : b));
+  const maxEmploy = data.reduce((a, b) => (a["Average Employability"] > b["Average Employability"] ? a : b));
 
   const trace2 = {
     x: [
@@ -174,16 +169,16 @@ Plotly.d3.csv("merged_data.csv", function(data) {
       maxEmploy["PROGRAM"]
     ],
     y: [
-      minEnroll["Enrollment (%)"],
-      maxEnroll["Enrollment (%)"],
-      minEmploy["GE (%)"],
-      maxEmploy["GE (%)"]
+      minEnroll["Average Enrollment"],
+      maxEnroll["Average Enrollment"],
+      minEmploy["Average Employability"],
+      maxEmploy["Average Employability"]
     ],
     text: [
-      `Lowest Enrollment (${minEnroll["JABATAN"]})`,
-      `Highest Enrollment (${maxEnroll["JABATAN"]})`,
-      `Lowest Employability (${minEmploy["JABATAN"]})`,
-      `Highest Employability (${maxEmploy["JABATAN"]})`
+      "Lowest Enrollment",
+      "Highest Enrollment",
+      "Lowest Employability",
+      "Highest Employability"
     ],
     type: "bar",
     marker: { color: ["#1f77b4", "#2ca02c", "#d62728", "#ff7f0e"] },
@@ -191,7 +186,7 @@ Plotly.d3.csv("merged_data.csv", function(data) {
   };
 
   Plotly.newPlot("chart2", [trace2], {
-    title: "Best & Worst Courses (Enrollment & Employability)",
+    title: "Best & Worst Courses (Average 2020–2024)",
     yaxis: { title: "Percentage (%)" },
     xaxis: { title: "Program" },
     plot_bgcolor: "#fff",
@@ -199,35 +194,28 @@ Plotly.d3.csv("merged_data.csv", function(data) {
   });
 
   document.getElementById("stats").innerHTML = `
-    <span class="highlight">📘 Lowest Enrollment:</span> ${minEnroll["PROGRAM"]} (${minEnroll["Enrollment (%)"]}%) - ${minEnroll["JABATAN"]}<br>
-    <span class="highlight">📗 Highest Enrollment:</span> ${maxEnroll["PROGRAM"]} (${maxEnroll["Enrollment (%)"]}%) - ${maxEnroll["JABATAN"]}<br>
-    <span class="highlight">📕 Lowest Employability:</span> ${minEmploy["PROGRAM"]} (${minEmploy["GE (%)"]}%) - ${minEmploy["JABATAN"]}<br>
-    <span class="highlight">📙 Highest Employability:</span> ${maxEmploy["PROGRAM"]} (${maxEmploy["GE (%)"]}%) - ${maxEmploy["JABATAN"]}
+    <span class="highlight">📘 Lowest Enrollment:</span> ${minEnroll["PROGRAM"]} (${minEnroll["Average Enrollment"]}%)<br>
+    <span class="highlight">📗 Highest Enrollment:</span> ${maxEnroll["PROGRAM"]} (${maxEnroll["Average Enrollment"]}%)<br>
+    <span class="highlight">📕 Lowest Employability:</span> ${minEmploy["PROGRAM"]} (${minEmploy["Average Employability"]}%)<br>
+    <span class="highlight">📙 Highest Employability:</span> ${maxEmploy["PROGRAM"]} (${maxEmploy["Average Employability"]}%)
   `;
 
-  // ---- 3️⃣ Trend Chart ----
-  const departments = [...new Set(data.map(d => d.JABATAN))];
-  const traces3 = departments.map(dep => {
-    const subset = data.filter(d => d.JABATAN === dep);
-    const avgByYear = {};
-    years.forEach(y => {
-      const group = subset.filter(d => d.Year === y);
-      const avgGE = group.reduce((sum, g) => sum + g["GE (%)"], 0) / (group.length || 1);
-      avgByYear[y] = avgGE;
-    });
-    return {
-      x: years,
-      y: years.map(y => avgByYear[y]),
-      mode: "lines+markers",
-      name: dep,
-      hovertemplate: `Dept: ${dep}<br>Year: %{x}<br>Avg GE: %{y}%<extra></extra>`
-    };
-  });
+  // ---- 3️⃣ Overview Summary ----
+  const avgEnroll = data.reduce((sum, d) => sum + d["Average Enrollment"], 0) / data.length;
+  const avgEmploy = data.reduce((sum, d) => sum + d["Average Employability"], 0) / data.length;
 
-  Plotly.newPlot("chart3", traces3, {
-    title: "Average Employability Rate per Department (Trend)",
-    xaxis: { title: "Year" },
-    yaxis: { title: "Employability (%)" },
+  const trace3 = {
+    x: ["Average Enrollment", "Average Employability"],
+    y: [avgEnroll, avgEmploy],
+    type: "bar",
+    marker: { color: ["#00539C", "#FF7F0E"] },
+    text: [`${avgEnroll.toFixed(2)}%`, `${avgEmploy.toFixed(2)}%`],
+    textposition: "auto"
+  };
+
+  Plotly.newPlot("chart3", [trace3], {
+    title: "Overall Averages (2020–2024)",
+    yaxis: { title: "Percentage (%)", range: [0, 100] },
     plot_bgcolor: "#fff",
     paper_bgcolor: "#fff"
   });
@@ -236,4 +224,3 @@ Plotly.d3.csv("merged_data.csv", function(data) {
 
 </body>
 </html>
-
