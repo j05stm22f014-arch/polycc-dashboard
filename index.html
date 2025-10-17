@@ -179,7 +179,7 @@ Plotly.d3.csv("merged_data.csv", function(raw){
                      line:{color:'#1f77b4',width:4,dash:'dash'}, text:gradVals.map(v=>v.toFixed(1)+'%'), textposition:'bottom center'};
 
   Plotly.newPlot('chart3', [gmTrace, gradTrace], {
-    title:`Graduate Marketability & Total Graduate Trend — ${prog["PROGRAM"]}`,
+    title:`GM & Total Graduate Trend — ${prog["PROGRAM"]}`,
     xaxis:{title:'Year'}, yaxis:{title:'Percentage (%)',range:[minY,maxY]},
     legend:{orientation:'h',x:0.05,y:1.1}, plot_bgcolor:'#fff', paper_bgcolor:'#fff'
   });
@@ -197,3 +197,4 @@ Plotly.d3.csv("merged_data.csv", function(raw){
 </script>
 </body>
 </html>
+
