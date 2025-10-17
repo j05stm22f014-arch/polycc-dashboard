@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PolyCC EngineRoom Dashboard (2020–2024)</title>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<style>
+  body{font-family:Segoe UI, Tahoma, sans-serif; margin:0; background:#f4f6fa; color:#333}
+  header{background:#004080;color:#fff;text-align:center;padding:22px;font-size:28px;font-weight:700}
+  nav{display:flex;justify-content:center;background:#e5e5e5}
+  nav button{border:none;background:none;padding:12px 22px;cursor:pointer;font-size:16px;font-weight:600}
+  nav button.active{background:#004080;color:#fff;border-radius:6px 6px 0 0}
+  .container{max-width:1200px;margin:22px auto;background:#fff;padding:20px;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,0.08)}
+  #chart1,#chart2,#chart3{width:100%;display:none}
+  #chart1.active,#chart2.active,#chart3.active{display:block}
+  #chart1 { height:520px; }
+  #barEnroll, #barEmp { height:360px; }
+  #chart3 { height:420px; }
+  .stats-box{margin-top:14px;background:#f9fafc;border:1px solid #ddd;padding:12px;border-radius:8px;line-height:1.7}
+  .highlight{font-weight:700;color:#004080}
+  .two-bars{display:flex;flex-direction:column;gap:18px}
+  .analysis-box{margin-top:15px;background:#f0f7ff;padding:15px;border-left:6px solid #004080;border-radius:8px;line-height:1.8}
+</style>
+</head>
+<body>
+<header>PolyCC EngineRoom Dashboard (2020–2024)</header>
+
+<nav>
+  <button class="active" onclick="show(1)">📊 Bubble Chart</button>
+  <button onclick="show(2)">📉 Bar Charts</button>
+  <button onclick="show(3)">📈 Line Chart</button>
+</nav>
+
+<div class="container">
+  <div id="chart1" class="active"></div>
+
+  <div id="chart2" class="two-bars" style="display:none">
+    <div id="barEnroll"></div>
+    <div id="barEmp"></div>
+    <div class="analysis-box" id="summary-analysis">
+      <b>From 2020–2024, data reveals:</b><br>
+      📘 Lowest Enrollment: <b>Diploma Kejuruteraan Mekanikal (Rekabentuk Produk)</b> — 22.04%<br>
+      📗 Highest Enrollment: <b>Diploma Kejuruteraan Elektronik (Perubatan)</b> — 116%<br>
+      📕 Lowest Employability: <b>Diploma Kejuruteraan Elektrik & Instrumentasi</b> — 39%<br>
+      📙 Highest Employability: <b>Diploma Kejuruteraan Mekanikal (Pertanian)</b> — 98.92%
+    </div>
+  </div>
+
+  <div id="chart3" style="display:none"></div>
+  <div class="stats-box" id="stats">
+    Click a point or bar to see program details (Kod Program, Program Pengajian, Enrollment Rate, Employ Rate).
+  </div>
+</div>
+
+<script>
+function show(n){
+  document.querySelectorAll('nav button').forEach((b,i)=>b.classList.toggle('active', i===n-1));
+  document.getElementById('chart1').style.display = (n===1)?'block':'none';
+  document.getElementById('chart2').style.display = (n===2)?'block':'none';
+  document.getElementById('chart3').style.display = (n===3)?'block':'none';
+}
+
+Plotly.d3.csv("merged_data.csv", function(raw){
+  if(!raw || raw.length===0){
+    document.getElementById('stats').innerText = '⚠️ merged_data.csv not found or empty';
+    return;
+  }
+
+  const data = raw.map(r=>{
+    const o={};
+    for(const k in r) o[k.trim()] = r[k];
+    return o;
+  });
+
+  const years = [2020,2021,2022,2023,2024];
+  const colors = {"2020":"#1f77b4","2021":"#ff7f0e","2022":"#2ca02c","2023":"#d62728","2024":"#9467bd"};
+
+  // === 1️⃣ Bubble Chart ===
+  const bubbleTraces = years.map(y=>{
+    const xs=[], ys=[], texts=[], metas=[];
+    data.forEach(d=>{
+      const x = parseFloat(d[`ENROLL_PCT_${y}`] || 0);
+      const yv = parseFloat(d[`EMPLOY_PCT_${y}`] || 0);
+      xs.push(isNaN(x)?0:x);
+      ys.push(isNaN(yv)?0:yv);
+      texts.push(`${d["PROGRAM"]||''}<br>Kod: ${d["KOD PROGRAM"]||''}<br>Enroll: ${x.toFixed(2)}%<br>Employ: ${yv.toFixed(2)}%<br>Year: ${y}`);
+      metas.push(d);
+    });
+    return {
+      x: xs, y: ys, text: texts, mode: 'markers', type: 'scatter', name: String(y),
+      marker: { size: 18, opacity: 0.85, color: colors[String(y)], line:{width:1,color:'#333'} },
+      customdata: metas
+    };
+  });
+
+  Plotly.newPlot('chart1', bubbleTraces, {
+    title: 'Enrollment vs Employability (per Year)',
+    xaxis: { title: 'Enrollment (%)', range:[0,130], automargin: true },
+    yaxis: { title: 'Employability (%)', range:[0,100], automargin: true },
+    legend: { x:1.02, y:1 },
+    margin: { r:160 }
+  });
+
+  document.getElementById('chart1').on('plotly_click', function(ev){
+    const pt = ev.points[0], row = pt.customdata, year = pt.data.name;
+    document.getElementById('stats').innerHTML = `
+      <b>Kod Program:</b> ${row["KOD PROGRAM"]||'N/A'}<br>
+      <b>Program Pengajian:</b> ${row["PROGRAM"]||'N/A'}<br>
+      <b>Enrollment Rate (${year}):</b> ${Number(row[`ENROLL_PCT_${year}`]||0).toFixed(2)}%<br>
+      <b>Employability Rate (${year}):</b> ${Number(row[`EMPLOY_PCT_${year}`]||0).toFixed(2)}%
+    `;
+  });
+
+  // === 2️⃣ Bar Charts ===
+  data.forEach(d=>{
+    d.AVG_ENROLL = parseFloat(d["AVERAGE ENROLLMENT"]||0);
+    d.AVG_EMPLOY = parseFloat(d["AVERAGE EMPLOYABILITY"]||0);
+  });
+
+  // Enrollment (lowest 3 & highest 3)
+  const sortedEnroll = [...data].sort((a,b)=>a.AVG_ENROLL - b.AVG_ENROLL);
+  const enroll6 = sortedEnroll.slice(0,3).concat(sortedEnroll.slice(-3));
+
+  Plotly.newPlot('barEnroll', [{
+    x: enroll6.map(d=>d["KOD PROGRAM"]),
+    y: enroll6.map(d=>d.AVG_ENROLL),
+    text: enroll6.map(d=>d["PROGRAM"]),
+    type: 'bar',
+    textposition:'auto',
+    marker:{color:['#1f77b4','#1f77b4','#1f77b4','#2ca02c','#2ca02c','#2ca02c']},
+    customdata: enroll6
+  }], {
+    title:'Lowest & Highest by Average Enrollment',
+    xaxis:{title:'Kod Program'}, yaxis:{title:'Average Enrollment (%)', range:[0,130]}, automargin:true
+  }, {responsive:true});
+
+  // Employability (use corrected data)
+  const lowestEmpName = "DIPLOMA KEJURUTERAAN ELEKTRIK & INSTRUMENTASI".toUpperCase();
+  const highestEmpName = "DIPLOMA KEJURUTERAAN MEKANIKAL (PERTANIAN)".toUpperCase();
+  const findByName = (list, name)=> list.find(d => (d["PROGRAM"]||"").toUpperCase().includes(name));
+  const lowEmpKnown = findByName(data, lowestEmpName);
+  const highEmpKnown = findByName(data, highestEmpName);
+  const emp6_custom = [lowEmpKnown, highEmpKnown].filter(Boolean);
+
+  const sortedEmpAll = [...data].sort((a,b)=>a.AVG_EMPLOY - b.AVG_EMPLOY);
+  for (const r of sortedEmpAll){
+    if (emp6_custom.length>=6) break;
+    const already = emp6_custom.some(x=>x["KOD PROGRAM"]===r["KOD PROGRAM"]);
+    if(!already) emp6_custom.push(r);
+  }
+
+  Plotly.newPlot('barEmp', [{
+    x: emp6_custom.map(d=>d["KOD PROGRAM"]),
+    y: emp6_custom.map(d=>d.AVG_EMPLOY),
+    text: emp6_custom.map(d=>d["PROGRAM"]),
+    type: 'bar',
+    textposition:'auto',
+    marker:{color:emp6_custom.map((d,i)=> i<3 ? '#d62728' : '#ff7f0e')},
+    customdata: emp6_custom
+  }], {
+    title:'Lowest & Highest by Average Employability',
+    xaxis:{title:'Kod Program'}, yaxis:{title:'Average Employability (%)', range:[0,100]}, automargin:true
+  }, {responsive:true});
+
+  // === 3️⃣ Line Chart ===
+  const targetName = "DIPLOMA KEJURUTERAAN MEKANIKAL (PERTANIAN)";
+  const prog = data.find(d => (d["PROGRAM"]||"").toUpperCase().includes(targetName));
+  if(!prog){ document.getElementById('chart3').innerHTML = "⚠️ Program not found."; return; }
+
+  const gmVals = years.map(y => parseFloat(prog[`GM_PCT_${y}`] || prog["AVERAGE GM"] || 0));
+  const gradVals = [86,70,55,82,53]; // edit later in HTML if needed
+  const minY = Math.floor(Math.min(...gmVals.concat(gradVals)))-5;
+  const maxY = Math.ceil(Math.max(...gmVals.concat(gradVals)))+5;
+
+  const gmTrace = {x: years, y: gmVals, mode:'lines+markers+text', name:'Total Graduate Marketability (%)',
+                   line:{color:'#2ca02c',width:4}, text:gmVals.map(v=>v.toFixed(1)+'%'), textposition:'top center'};
+  const gradTrace = {x: years, y: gradVals, mode:'lines+markers+text', name:'Total Graduate (%)',
+                     line:{color:'#1f77b4',width:4,dash:'dash'}, text:gradVals.map(v=>v.toFixed(1)+'%'), textposition:'bottom center'};
+
+  Plotly.newPlot('chart3', [gmTrace, gradTrace], {
+    title:`Graduate Marketability & Total Graduate Trend — ${prog["PROGRAM"]}`,
+    xaxis:{title:'Year'}, yaxis:{title:'Percentage (%)',range:[minY,maxY]},
+    legend:{orientation:'h',x:0.05,y:1.1}, plot_bgcolor:'#fff', paper_bgcolor:'#fff'
+  });
+
+  document.getElementById('chart3').on('plotly_click', function(ev){
+    const pt = ev.points[0];
+    document.getElementById('stats').innerHTML = `
+      <b>Kod Program:</b> ${prog["KOD PROGRAM"]}<br>
+      <b>Program Pengajian:</b> ${prog["PROGRAM"]}<br>
+      <b>Year:</b> ${pt.x}<br>
+      <b>Value:</b> ${Number(pt.y).toFixed(2)}%
+    `;
+  });
+});
+</script>
+</body>
+</html>
